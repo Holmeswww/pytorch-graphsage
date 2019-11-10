@@ -12,7 +12,7 @@ import os
 import sys
 import h5py
 import shutil
-import cPickle
+import _pickle as cPickle
 import argparse
 import numpy as np
 import ujson as json
@@ -22,7 +22,7 @@ from scipy.sparse import csr_matrix
 from networkx.readwrite import json_graph
 from sklearn.preprocessing import StandardScaler
 
-assert int(nx.__version__.split('.')[0]) < 2, "networkx major version > 1"
+# assert int(nx.__version__.split('.')[0]) < 2, "networkx major version > 1"
 
 # --
 # Helpers
@@ -45,7 +45,7 @@ def validate_problem(problem):
         assert problem['feats'].shape[0] == problem['targets'].shape[0], "problem['feats'].shape[0] != (problem['targets'].shape[0]"
         assert problem['feats'].shape[0] == problem['folds'].shape[0], "problem['feats'].shape[0] != (problem['folds'].shape[0]"
         
-        if not problem['sparse']:
+        if (not 'sparse' in problem.keys()) or not problem['sparse']:
             assert problem['adj'].shape[0] == problem['feats'].shape[0], "problem['adj'].shape[0] != problem['feats'].shape[0]"
     
     assert problem['adj'].shape[0] == problem['train_adj'].shape[0], "problem['adj'].shape[0] != problem['train_adj'].shape[0]"
@@ -55,7 +55,7 @@ def validate_problem(problem):
 def save_problem(problem, outpath):
     assert validate_problem(problem)
     assert not os.path.exists(outpath), 'save_problem: %s already exists' % outpath
-    
+    problem['folds'] = problem['folds'].astype('S')
     if 'sparse' in problem and problem['sparse']:
         problem['adj'] = spadj2edgelist(problem['adj'])
         problem['train_adj'] = spadj2edgelist(problem['train_adj'])
@@ -64,7 +64,7 @@ def save_problem(problem, outpath):
     for k,v in problem.items():
         if v is not None:
             f[k] = v
-    
+
     f.close()
 
 
@@ -83,7 +83,7 @@ def make_adjacency(G, max_degree, sel=None):
     for node in tqdm(all_nodes):
         neibs = np.array(list(G.neighbors(node)))
         
-        if sel is not None:
+        if sel is not None and len(neibs)>0:
             neibs = neibs[sel[neibs]]
         
         if len(neibs) > 0:
@@ -157,14 +157,26 @@ if __name__ == "__main__":
     print('loading <- %s' % args.inpath, file=sys.stderr)
     id2target = json.load(open(os.path.join(args.inpath, 'class_map.json')))
     id2idx    = json.load(open(os.path.join(args.inpath, 'id_map.json')))
+    # print(list(id2idx.keys())[-10:])
     feats     = np.load(os.path.join(args.inpath, 'feats.npy'))
     G         = json_graph.node_link_graph(json.load(open(os.path.join(args.inpath, 'G.json'))))
 
 
     print('reordering')
-    feats   = np.vstack([feats[id2idx[str(id)]] for id in G.nodes()])
-    targets = np.vstack([id2target[str(id)] for id in G.nodes()])
-    folds   = np.array([parse_fold(G.node[id]) for id in G.nodes()])
+    # print(list(G.nodes())[-10:])
+    # exit()
+    FUCK = 0
+    LIST = list(G.nodes())
+    for id in LIST:
+        if str(id) not in id2idx.keys():
+            FUCK+=1
+            G.remove_node(id)
+
+    print("FUCKRATE: {}".format(FUCK/len(LIST)))
+    feats   = np.vstack([feats[id2idx[str(id)]] for id in G.nodes() if str(id) in id2idx.keys()])
+    targets = np.vstack([id2target[str(id)] for id in G.nodes() if str(id) in id2target.keys()])
+    folds   = np.array([parse_fold(G.node[id]) for id in G.nodes() if str(id) in id2idx.keys()])
+    print(len(id2idx.keys()),np.shape(feats),np.shape(targets), np.shape(folds))
     G       = nx.convert_node_labels_to_integers(G)
 
 
