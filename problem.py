@@ -10,7 +10,7 @@ from __future__ import print_function
 import os
 import sys
 import h5py
-import cPickle
+import _pickle as cPickle
 import numpy as np
 from scipy import sparse
 from sklearn import metrics
@@ -30,6 +30,7 @@ class ProblemLosses:
     
     @staticmethod
     def classification(preds, targets):
+        print(preds.size(),targets.size())
         return F.cross_entropy(preds, targets)
         
     @staticmethod
@@ -81,6 +82,7 @@ class NodeProblem(object):
         self.n_classes = f['n_classes'].value if 'n_classes' in f else 1 # !!
         self.feats     = f['feats'].value if 'feats' in f else None
         self.folds     = f['folds'].value
+        self.folds = np.array([str(x, 'utf-8') for x in self.folds])
         self.targets   = f['targets'].value
         if 'sparse' in f and f['sparse'].value:
             self.adj = parse_csr_matrix(f['adj'].value)

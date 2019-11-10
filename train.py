@@ -46,7 +46,7 @@ def parse_args():
     
     # Optimization params
     parser.add_argument('--batch-size', type=int, default=512)
-    parser.add_argument('--epochs', type=int, default=10)
+    parser.add_argument('--epochs', type=int, default=1000)
     parser.add_argument('--lr-init', type=float, default=0.01)
     parser.add_argument('--lr-schedule', type=str, default='constant')
     parser.add_argument('--weight-decay', type=float, default=0.0)
@@ -88,9 +88,9 @@ if __name__ == "__main__":
     # --
     # Define model
     
-    n_train_samples = map(int, args.n_train_samples.split(','))
-    n_val_samples = map(int, args.n_val_samples.split(','))
-    output_dims = map(int, args.output_dims.split(','))
+    n_train_samples = list(map(int, args.n_train_samples.split(',')))
+    n_val_samples = list(map(int, args.n_val_samples.split(',')))
+    output_dims = list(map(int, args.output_dims.split(',')))
     model = GSSupervised(**{
         "sampler_class" : sampler_lookup[args.sampler_class],
         "adj" : problem.adj,
@@ -138,6 +138,7 @@ if __name__ == "__main__":
         
         # Train
         _ = model.train()
+        i = 0
         for ids, targets, epoch_progress in problem.iterate(mode='train', shuffle=True, batch_size=args.batch_size):
             model.set_progress((epoch + epoch_progress) / args.epochs)
             preds = model.train_step(
@@ -148,14 +149,16 @@ if __name__ == "__main__":
             )
             
             train_metric = problem.metric_fn(to_numpy(targets), to_numpy(preds))
-            print(json.dumps({
-                "epoch" : epoch,
-                "epoch_progress" : epoch_progress,
-                "train_metric" : train_metric,
-                "val_metric" : val_metric,
-                "time" : time() - start_time,
-            }, double_precision=5))
-            sys.stdout.flush()
+            if i % 5 == 0:
+                print(json.dumps({
+                        "epoch" : epoch,
+                        "epoch_progress" : epoch_progress,
+                        "train_metric" : train_metric,
+                        "val_metric" : val_metric,
+                        "time" : time() - start_time,
+                    }, double_precision=5))
+                sys.stdout.flush()
+            i += 1
         
         # Evaluate
         _ = model.eval()

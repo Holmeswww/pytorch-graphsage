@@ -79,7 +79,7 @@ class GSSupervised(nn.Module):
             ids = sampler_fn(ids=ids).contiguous().view(-1)
             tmp_feats = feats[ids] if has_feats else None
             all_feats.append(self.prep(ids, tmp_feats, layer_idx=layer_idx + 1))
-        
+
         # Sequentially apply layers, per original (little weird, IMO)
         # Each iteration reduces length of array by one
         for agg_layer in self.agg_layers.children():
