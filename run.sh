@@ -48,3 +48,6 @@ time ./train.py \
 python ./train.py \
     --problem-path ./data/example_data/problem.h5 \
     --aggregator-class mean
+
+
+# python ./train.py --problem-path ./data/ppi/problem.h5 --aggregator-class mean
